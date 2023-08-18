@@ -71,7 +71,7 @@ E eu vou criar fora do resultado uma nova pipeline utilizando essa pcollection r
 
 Temos que fazer a importação, ele fica junto do mesmo local lá do io, onde está o ReadFromText. Ele já importou aqui para mim, nós temos aqui from apache_bem.io.textio import WriteToText. E se nós colocarmos vírgula aqui, deixa eu mostrar lá embaixo, vou apertar “Ctrl + espaço”, várias coisas que nós podemos escrever.
 
-![Alt text](<Captura de tela de 2023-08-17 21-31-20.png>)
+![Alt text](<Exemplos.png>)
 
 Eu tenho como escrever um PubSub, que é uma mensageria, tem o Parquet, que já vai ser um arquivo estruturado, em um banco, no caso o Mongo, BigQuery, que já vai ser da infraestrutura do Google, um Avro, que é um arquivo mais compactado que o Parquet, mas também é estruturado.
 
