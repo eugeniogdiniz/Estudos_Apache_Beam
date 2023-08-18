@@ -1,6 +1,7 @@
 import re
 import apache_beam as beam
 from apache_beam.io import ReadFromText
+from apache_beam.io.textio import WriteToText
 from apache_beam.options.pipeline_options import PipelineOptions
 
 pipeline_options =  PipelineOptions(argc=None)
@@ -67,7 +68,42 @@ def chave_uf_ano_mes_de_lista(elemento):
         mm = float(mm)
     return chave, mm
 
-""" dengue = (
+def arredonda(elemento):
+    """"
+    Arredonda valores de uma tupla
+    """
+    chave, mm = elemento
+    return (chave, round(mm, 1))
+
+def filtra_dados_vazios(elemento):
+    """
+    Remove elementos que tenham chaves vazias
+    """
+    chave, dados = elemento
+    if all([
+        dados['chuvas'],
+        dados['dengue']
+        ]):
+        return True
+    return False
+
+def descompactar_elementos(elemento):
+    """
+    Vai receber uma tupla e retornar uma lista
+    """
+    chave, dados = elemento
+    chuva = dados['chuvas'][0]
+    dengue = dados['dengue'][0]
+    uf, ano, mes = chave.split('-')
+    return uf, ano, mes, str(chuva), str(dengue)
+
+def preparando_csv(elemento, delimitador=';'):
+    """
+    Recebe uma tupla e retorna uma string delimitada
+    """
+    return f"{delimitador}".join(elemento)
+
+dengue = (
     pipeline
     | "Leitura do dataset de dengue" >> 
         ReadFromText('bases/casos_dengue.txt', skip_header_lines=1)
@@ -78,8 +114,8 @@ def chave_uf_ano_mes_de_lista(elemento):
     | "Agurpar pelo estado" >> beam.GroupByKey()
     | "Descompactar casos de dengue" >> beam.FlatMap(casos_dengue)
     | "Soma dos casos pela chave" >> beam.CombinePerKey(sum)
-    | "Mostrar resultados" >> beam.Map(print)
-) """
+#    | "Mostrar resultados" >> beam.Map(print)
+) 
 
 chuva = (
     pipeline
@@ -87,9 +123,29 @@ chuva = (
         ReadFromText('bases/chuvas.csv', skip_header_lines=1)
     | "De texto para lista (chuvas)" >> beam.Map(texto_para_lista, delimitador=',')
     | "Criando a chave UF_ANO_MES" >> beam.Map(chave_uf_ano_mes_de_lista)
-    | "Soma das chuvas pela chave" >> beam.CombinePerKey(sum)
-    | "Mostrar resultados" >> beam.Map(print)
+    | "Soma do total de chuvas pela chave" >> beam.CombinePerKey(sum)
+    | "Arredondar resultados de chuvas" >> beam.Map(arredonda)
+#    | "Mostrar resultados" >> beam.Map(print)
 )
+
+resultado = (
+    # (chuva, dengue)
+    # | "O metódo Flatten une as Pcollections" >> beam.Flatten()
+    # | "Agrupando as Pcols" >> beam.GroupByKey()
+    ({'chuvas': chuva, 'dengue': dengue})
+    | "Mesclar pcols" >> beam.CoGroupByKey()
+    | "filtrar dados vazios" >> beam.Filter(filtra_dados_vazios)
+    | "Descompactar elementos" >> beam.Map(descompactar_elementos)
+    | "Preparando CSV" >> beam.Map(preparando_csv)
+    # | "Mostra o resultado da união" >> beam.Map(print)
+)
+
+#uf, ano, mes, str(chuva), str(dengue)
+
+header = 'uf;ano;mes;chuva;dengue'
+
+resultado | "Criar arquivo CSV" >> WriteToText('Resultado', file_name_suffix='.csv',\
+                                               header=header)
 
 
 pipeline.run()
